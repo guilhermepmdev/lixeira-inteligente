@@ -30,6 +30,9 @@ Câmera  →  Inteligência Artificial  →  Sistema de decisão  →  Arduino +
 ├── main.py      # Programa principal: menu, fluxo completo da lixeira
 ├── ia.py        # Simulação da inteligência artificial (classificação)
 ├── arduino.py   # Simulação do Arduino e do braço mecânico
+├── lixeira-3d-por-dentro.html   # Modelo 3D com a casca transparente (principal)
+├── lixeira-3d.html              # Versão 3D externa, mais simples
+├── lixeira-inteligente.html     # Versão 2D (visão de cima)
 └── README.md
 ```
 
@@ -130,9 +133,46 @@ OBJETOS = [
 
 ---
 
-## Demonstração visual
+## Modelo 3D (demonstração visual)
 
-Além do terminal, existe uma versão em **HTML, CSS e JavaScript** (`lixeira-inteligente.html`) com a mesma lógica. Nela é possível clicar em cartões ou digitar um objeto e ver o braço girando até o compartimento certo. Basta abrir o arquivo no navegador.
+Além do terminal, o projeto tem um **modelo 3D interativo** em HTML, CSS e JavaScript, feito com a biblioteca [three.js](https://threejs.org/). Ele usa a mesma lógica do `ia.py` e do `arduino.py`, mas mostra o sistema funcionando por dentro.
+
+**Arquivo principal:** `lixeira-3d-por-dentro.html`. Basta abri-lo no navegador (é preciso conexão com a internet para carregar o three.js).
+
+### O que aparece dentro da lixeira
+
+A lixeira tem uma **casca transparente**, o que permite ver todos os componentes:
+
+| Componente | O que representa |
+|---|---|
+| Tampa com entrada | Furo por onde o lixo é jogado |
+| Câmera + IA | Fica sob a tampa e projeta um feixe de luz sobre o objeto durante a análise |
+| Servo + braço | Gira até o ângulo do compartimento escolhido (0°, 60°, 120°…) |
+| Arduino | Placa na parede, com um LED que acende quando o comando é enviado, ligada ao servo por um fio |
+| 6 compartimentos | Reciclável, Papel, Orgânico, Metal, Vidro e Rejeito, com os objetos descartados visíveis |
+
+### Como usar
+
+1. Escolha um objeto nos cartões ou digite o nome dele (por exemplo, `jornal` ou `pilha`).
+2. Acompanhe a sequência: o objeto cai pela entrada, a câmera escaneia, a IA mostra a categoria e a confiança, o compartimento brilha e o braço leva o objeto até o destino.
+3. O painel lateral e o registro de texto mostram as mesmas etapas e mensagens do `main.py`.
+4. Um indicador no canto da tela mostra o ângulo do servo em tempo real.
+
+### Controles
+
+- **Girar a visão:** arraste com o mouse ou o dedo.
+- **Zoom:** use o scroll do mouse.
+- **Casca:** deslizante que deixa a lixeira mais ou menos transparente.
+- **Corte frontal da casca:** abre a lixeira como uma maquete.
+- **Mostrar rótulos:** liga ou desliga os nomes dos componentes e dos compartimentos.
+- **Esvaziar compartimentos:** remove os objetos já descartados.
+
+### Outras versões
+
+- `lixeira-3d.html`: versão 3D vista por fora, mais simples.
+- `lixeira-inteligente.html`: versão 2D, com a lixeira vista de cima.
+
+> Assim como no Python, a IA é simulada: o objeto é identificado pelo **nome**, e um objeto desconhecido vai para **Rejeito** com confiança entre 50% e 75%.
 
 ---
 
