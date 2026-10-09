@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lixeira Inteligente 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f1;--card:#fff;--ink:#17201a;--mute:#5d6b61;--line:#d9dfd6;--accent:#1f6f4a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121712;--card:#1b231d;--ink:#e8efe9;--mute:#9aa99e;--line:#2c382f;--accent:#5fd197}}
+:root[data-theme="dark"]{--bg:#121712;--card:#1b231d;--ink:#e8efe9;--mute:#9aa99e;--line:#2c382f;--accent:#5fd197}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,sans-serif;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 14px 40px}
+h1{font-size:clamp(1.7rem,5vw,2.6rem);line-height:1.05;margin:0 0 6px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--mute);margin:0 0 16px;max-width:64ch}
+.app{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(290px,1fr);gap:14px}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+#stage{position:relative;height:min(72vh,600px);min-height:340px;border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden}
+#stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.tip{position:absolute;left:12px;bottom:10px;font-size:.78rem;color:var(--mute);pointer-events:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:1rem;margin:0 0 10px;font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px}
+.obj{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:8px 4px;font:inherit;font-size:.78rem;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.obj span{font-size:1.5rem}
+.obj:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.obj:disabled,.go:disabled{opacity:.5;cursor:wait}
+.free{display:flex;gap:7px;margin-top:10px}
+.free input{flex:1;min-width:0;font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.go{font:inherit;font-weight:600;padding:8px 13px;border-radius:10px;border:0;background:var(--accent);color:var(--bg);cursor:pointer}
+.go.alt{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.steps{display:grid;gap:6px}
+.step{display:grid;grid-template-columns:28px 1fr;gap:8px;padding:7px 9px;border-radius:10px;border:1px solid var(--line);opacity:.45;transition:opacity .3s,border-color .3s}
+.step.on{opacity:1;border-color:var(--accent)}
+.step b{font-size:.85rem;display:block}.step small{color:var(--mute);font-size:.82rem}
+.bar{height:7px;background:var(--line);border-radius:5px;margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .8s}
+pre{margin:0;background:#0f1511;color:#b9f3cf;border-radius:10px;padding:10px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;height:150px;overflow:auto;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Lixeira Inteligente em 3D</h1>
+<p class="sub">Jogue um objeto e acompanhe: ele cai na garra, a câmera escaneia, a IA classifica e o braço gira até o compartimento certo. Arraste para girar a visão e use o scroll para aproximar.</p>
+<div class="app">
+  <div id="stage"><div class="tip">Arraste para girar · scroll para zoom</div></div>
+  <div>
+    <div class="panel">
+      <h2>Escolha um objeto</h2>
+      <div class="cards" id="cards"></div>
+      <div class="free">
+        <input id="txt" placeholder="Ou digite (ex: jornal, pilha)" aria-label="Objeto digitado" autocomplete="off">
+        <button class="go" id="goBtn" type="button">Jogar</button>
+      </div>
+      <div class="free"><button class="go alt" id="clr" type="button">Esvaziar compartimentos</button></div>
+    </div>
+    <div class="panel">
+      <div class="steps">
+        <div class="step" id="s1"><div>📷</div><div><b>Câmera</b><small id="t1">Aguardando…</small></div></div>
+        <div class="step" id="s2"><div>🤖</div><div><b>Inteligência artificial</b><small id="t2">—</small><div class="bar"><i id="conf"></i></div></div></div>
+        <div class="step" id="s3"><div>🧠</div><div><b>Decisão</b><small id="t3">—</small></div></div>
+        <div class="step" id="s4"><div>🦾</div><div><b>Arduino e braço</b><small id="t4">—</small></div></div>
+      </div>
+    </div>
+    <div class="panel"><h2>Registro</h2><pre id="log" aria-live="polite">Pronto. Escolha um objeto.</pre></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const ANG={"Reciclável":0,"Papel":60,"Orgânico":120,"Metal":180,"Vidro":240,"Rejeito":300};
+const COL={"Reciclável":0xd6453d,"Papel":0x3b7dd8,"Orgânico":0x8a5a35,"Metal":0xe0a81e,"Vidro":0x2e9e5b,"Rejeito":0x6f7378};
+const CLASS={"garrafa pet":["Reciclável",96],"sacola plastica":["Reciclável",94],"garrafa plastica":["Reciclável",97],"folha de papel":["Papel",99],"jornal":["Papel",98],"caixa de papelao":["Papel",96],"banana":["Orgânico",99],"casca de banana":["Orgânico",98],"restos de comida":["Orgânico",95],"lata":["Metal",97],"lata de refrigerante":["Metal",98],"garrafa de vidro":["Vidro",96],"pote de vidro":["Vidro",94],"guardanapo sujo":["Rejeito",91],"fralda":["Rejeito",99]};
+const CARDS=[["garrafa pet","🧴"],["folha de papel","📄"],["banana","🍌"],["lata","🥫"],["garrafa de vidro","🍾"],["guardanapo sujo","🧻"],["jornal","📰"],["fralda","👶"]];
+const norm=s=>s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+const D=Math.PI/180, REST=30, TRAYR=2.1, ARMY=1.95;
+
+// ---------- cena ----------
+const wrap=$("stage");let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true})}catch(e){wrap.innerHTML="<p style='padding:20px'>Seu navegador não conseguiu iniciar o 3D (WebGL).</p>"}
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;wrap.appendChild(renderer.domElement);
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(42,1,.1,100),tgt=new THREE.Vector3(0,1.8,0);
+let az=.6,el=.75,dist=16;
+function placeCam(){cam.position.set(tgt.x+dist*Math.sin(az)*Math.cos(el),tgt.y+dist*Math.sin(el),tgt.z+dist*Math.cos(az)*Math.cos(el));cam.lookAt(tgt)}
+function resize(){const w=wrap.clientWidth,h=wrap.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(wrap);resize();
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x778877,.85));
+const sun=new THREE.DirectionalLight(0xffffff,.75);sun.position.set(6,13,8);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,near:1,far:40});scene.add(sun);
+const gnd=new THREE.Mesh(new THREE.CircleGeometry(16,48),new THREE.ShadowMaterial({opacity:.22}));gnd.rotation.x=-Math.PI/2;gnd.position.y=-.3;gnd.receiveShadow=true;scene.add(gnd);
+
+const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.55},o));
+function mesh(g,m,x=0,y=0,z=0){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;return o}
+const cyl=(r,h,m,y=0)=>mesh(new THREE.CylinderGeometry(r,r,h,24),m,0,y,0);
+scene.add(mesh(new THREE.CylinderGeometry(3.7,3.7,.3,48),M(0x2a302c),0,-.15,0));
+
+// compartimentos
+function arc(a0,a1,R0,R1,n=14){const p=[];for(let i=0;i<=n;i++){const a=(a0+(a1-a0)*i/n)*D;p.push([R1*Math.sin(a),R1*Math.cos(a)])}for(let i=n;i>=0;i--){const a=(a0+(a1-a0)*i/n)*D;p.push([R0*Math.sin(a),R0*Math.cos(a)])}return p}
+const sh=p=>{const s=new THREE.Shape();p.forEach((q,i)=>i?s.lineTo(q[0],q[1]):s.moveTo(q[0],q[1]));return s};
+function label(txt,x,z){const c=document.createElement("canvas");c.width=256;c.height=72;const g=c.getContext("2d");g.fillStyle="rgba(15,21,17,.78)";g.beginPath();g.roundRect?g.roundRect(4,8,248,56,16):g.rect(4,8,248,56);g.fill();g.fillStyle="#fff";g.font="600 32px sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText(txt,128,37);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));s.scale.set(2.3,.65,1);s.position.set(x,2.0,z);scene.add(s)}
+const trays={};
+Object.keys(ANG).forEach(n=>{
+  const a=ANG[n],mat=M(COL[n],{emissive:COL[n],emissiveIntensity:0});
+  const wall=shape(arc(a-28,a+28,1.0,3.2)),hole=new THREE.Path();arc(a-24,a+24,1.15,3.05).forEach((q,i)=>i?hole.lineTo(q[0],q[1]):hole.moveTo(q[0],q[1]));wall.holes.push(hole);
+  const g1=new THREE.ExtrudeGeometry(wall,{depth:1.2,bevelEnabled:false}).rotateX(-Math.PI/2);
+  const g2=new THREE.ExtrudeGeometry(sh(arc(a-28,a+28,1.0,3.2)),{depth:.15,bevelEnabled:false}).rotateX(-Math.PI/2);
+  scene.add(mesh(g1,mat),mesh(g2,mat));trays[n]={mat,items:[]};
+  label(n,3.9*Math.sin(a*D),-3.9*Math.cos(a*D));
+});
+function shape(p){return sh(p)}
+
+// cubo central, poste e câmera
+scene.add(cyl(.95,1.6,M(0x3b4540),.8),cyl(.1,4.2,M(0x59635d),3.7),mesh(new THREE.BoxGeometry(1.1,.5,1.1),M(0x2d3531),0,5.95,0));
+const lens=mesh(new THREE.CylinderGeometry(.24,.24,.1,20),M(0x220000,{emissive:0xff2a2a,emissiveIntensity:.25}),0,5.65,0);scene.add(lens);
+const beam=new THREE.Mesh(new THREE.CylinderGeometry(.03,.5,1,20,1,true),new THREE.MeshBasicMaterial({color:0x6fe3ff,transparent:true,opacity:.28,depthWrite:false,side:THREE.DoubleSide}));beam.visible=false;scene.add(beam);
+function aimBeam(p){const c=new THREE.Vector3(0,5.6,0),v=c.clone().sub(p),L=v.length();beam.position.copy(p).add(c).multiplyScalar(.5);beam.scale.set(1,L,1);beam.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize())}
+
+// braço
+const arm=new THREE.Group();arm.position.y=ARMY;arm.rotation.y=-REST*D;scene.add(arm);
+const armM=M(0xe58a2b,{metalness:.3});
+arm.add(mesh(new THREE.BoxGeometry(.3,.2,2.2),armM,0,0,-1.1),cyl(.4,.3,armM,0),cyl(.5,.12,M(0xffc477),0),);
+arm.children[2].position.set(0,0,-TRAYR);
+scene.add(mesh(new THREE.CylinderGeometry(.35,.35,.3,20),M(0x59635d),0,1.75,0));
+
+// objetos
+function bottle(c,op){const g=new THREE.Group(),m=M(c,{transparent:true,opacity:op});g.add(cyl(.28,.9,m,0),cyl(.11,.4,m,.65),cyl(.13,.1,M(0xffffff),.9));return g}
+function buildItem(nome,cat,known){const g=new THREE.Group();let o;
+  if(!known)o=mesh(new THREE.DodecahedronGeometry(.4),M(0xa57be0));
+  else if(nome.includes("banana")){o=mesh(new THREE.TorusGeometry(.45,.1,8,18,Math.PI*.8),M(0xf2c53d));o.rotation.x=Math.PI/2}
+  else if(nome.includes("caixa"))o=mesh(new THREE.BoxGeometry(.7,.5,.7),M(0xb98b55));
+  else if(cat=="Reciclável")o=bottle(0x6fc3ff,.6);
+  else if(cat=="Papel")o=mesh(new THREE.BoxGeometry(.8,.05,.6),M(nome=="jornal"?0xc9ccc4:0xf6f6ef));
+  else if(cat=="Orgânico")o=mesh(new THREE.IcosahedronGeometry(.3),M(0x7a5a2c,{flatShading:true}));
+  else if(cat=="Metal")o=cyl(.3,.6,M(0xc9ced4,{metalness:.8,roughness:.3}));
+  else if(cat=="Vidro")o=bottle(0x39b36a,.7);
+  else o=mesh(new THREE.IcosahedronGeometry(.38),M(0x8a8d90,{flatShading:true}));
+  g.add(o);const b=new THREE.Box3().setFromObject(g);g.userData.off=-b.min.y;return g}
+
+// controles de câmera
+const cv=renderer.domElement;let drag=null;
+cv.addEventListener("pointerdown",e=>{drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);cv.style.cursor="grabbing"});
+cv.addEventListener("pointermove",e=>{if(!drag)return;az-=(e.clientX-drag[0])*.008;el=Math.max(.15,Math.min(1.45,el+(e.clientY-drag[1])*.006));drag=[e.clientX,e.clientY]});
+cv.addEventListener("pointerup",()=>{drag=null;cv.style.cursor="grab"});
+cv.addEventListener("wheel",e=>{e.preventDefault();dist=Math.max(8,Math.min(26,dist+e.deltaY*.01))},{passive:false});
+(function loop(){placeCam();renderer.render(scene,cam);requestAnimationFrame(loop)})();
+
+// ---------- animação e fluxo ----------
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function tween(ms,fn,e=ease){return new Promise(r=>{const t0=performance.now();(function f(n){const t=Math.min((n-t0)/ms,1);fn(e(t));t<1?requestAnimationFrame(f):r()})(t0)})}
+async function turnTo(deg,ms){const a0=arm.rotation.y;let d=-deg*D-a0;d=Math.atan2(Math.sin(d),Math.cos(d));await tween(ms,t=>arm.rotation.y=a0+d*t)}
+const glow=(n,v)=>trays[n].mat.emissiveIntensity=v;
+
+let busy=false;
+function log(t){const l=$("log");l.textContent+=(l.textContent?"\n":"")+t;l.scrollTop=l.scrollHeight}
+function lock(v){busy=v;document.querySelectorAll(".obj,.go").forEach(b=>b.disabled=v)}
+function reset(){["s1","s2","s3","s4"].forEach(i=>$(i).classList.remove("on"));["t2","t3","t4"].forEach(i=>$(i).textContent="—");$("conf").style.width="0";Object.keys(trays).forEach(n=>glow(n,0))}
+
+async function run(nome){
+  if(busy)return;lock(true);reset();$("log").textContent="";
+  const k=norm(nome),known=k in CLASS;let cat,conf;
+  if(known)[cat,conf]=CLASS[k];else{cat="Rejeito";conf=50+Math.floor(Math.random()*26)}
+  const item=buildItem(k,cat,known),rest=.06+item.userData.off;
+  item.position.set(0,4.5,-TRAYR);arm.add(item);
+
+  $("s1").classList.add("on");$("t1").textContent="Objeto detectado: "+nome;log("📷 CÂMERA\nObjeto detectado: "+nome);
+  await tween(900,t=>{item.position.y=4.5+(rest-4.5)*t;item.rotation.y=t*3},t=>t*t);
+
+  $("s2").classList.add("on");$("t2").textContent="Analisando objeto…";log("\n🤖 INTELIGÊNCIA ARTIFICIAL\nAnalisando objeto...");
+  const wp=new THREE.Vector3();item.getWorldPosition(wp);aimBeam(wp);beam.visible=true;
+  await tween(1100,t=>{lens.material.emissiveIntensity=.4+Math.abs(Math.sin(t*12))*1.6;item.rotation.y=3+t*6.3});
+  beam.material.color.set(COL[cat]);lens.material.emissiveIntensity=.25;
+  $("t2").textContent=`${cat} — confiança ${conf}%`+(known?"":" (desconhecido)");$("conf").style.width=conf+"%";
+  log(`Categoria: ${cat}\nConfiança da IA: ${conf}%`+(known?"":"\n(IA não conhece o objeto → Rejeito)"));await sleep(800);
+
+  $("s3").classList.add("on");$("t3").textContent="Destino escolhido: "+cat;log("\n🧠 SISTEMA DE DECISÃO\nDestino escolhido: "+cat);
+  await tween(700,t=>glow(cat,.55*t));beam.visible=false;
+
+  const ang=ANG[cat];$("s4").classList.add("on");$("t4").textContent=`Servo girando para ${ang}°…`;
+  log(`\n🦾 ARDUINO\nComando recebido: levar para ${cat}\nServo motor girando para ${ang}°...`);
+  await turnTo(ang,1500);log("🦾 Braço chegou ao destino.");
+
+  const p=new THREE.Vector3();item.getWorldPosition(p);arm.remove(item);scene.add(item);
+  item.position.copy(p);item.position.x+=(Math.random()-.5)*.4;item.position.z+=(Math.random()-.5)*.4;item.rotation.set(0,item.rotation.y,0);
+  const T=trays[cat],stack=T.items.length*.1,y0=item.position.y,y1=.15+item.userData.off+stack;
+  T.items.push(item);if(T.items.length>4){scene.remove(T.items.shift())}
+  await tween(550,t=>{item.position.y=y0+(y1-y0)*t},t=>t*t);
+  await tween(500,t=>glow(cat,.55+.5*Math.sin(t*Math.PI)));
+  $("t4").textContent="Descartado em: "+cat;log(`♻️ Descartando objeto em: ${cat}\n✅ Descarte concluído!`);
+  await turnTo(REST,1300);lock(false);
+}
+$("cards").innerHTML=CARDS.map(([n,e])=>`<button class="obj" data-o="${n}"><span>${e}</span>${n}</button>`).join("");
+$("cards").addEventListener("click",e=>{const b=e.target.closest(".obj");if(b)run(b.dataset.o)});
+$("goBtn").onclick=()=>{const v=$("txt").value;if(v.trim())run(v)};
+$("txt").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("goBtn").click()}});
+$("clr").onclick=()=>{if(busy)return;Object.values(trays).forEach(t=>{t.items.forEach(i=>scene.remove(i));t.items=[]});reset();$("log").textContent="Compartimentos esvaziados."};
+</script>
+</body>
+</html>
